@@ -74,6 +74,8 @@ def create_order(db: Session, user_id: int, total_amount: float, customer_name: 
     db.add(order)
     db.commit()
     db.refresh(order)
+    clear_cart(db, user_id)
+
     return order
 
 def get_orders_by_user(db: Session, user_id: int):

@@ -1,8 +1,7 @@
-# database/models.py
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 Base = declarative_base()
 
@@ -38,7 +37,7 @@ class Order(Base):
     __tablename__ = 'orders'
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone(timedelta(hours=3))))
     status = Column(String(50), default="new")  # new / confirmed / delivered / cancelled
     total_amount = Column(Float, nullable=False)
     customer_name = Column(String(100))

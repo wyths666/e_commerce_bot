@@ -6,11 +6,9 @@ from database.db_helper import get_db
 from keyboards.admin_keyboards import get_admin_menu_kb, get_orders_kb, get_order_status_kb, get_product_edit_kb, get_products_list_kb
 from states.admin_states import AddProduct, EditProduct
 from database.models import Order, Product
-
+from config import ADMIN_IDS
 router = Router()
 
-# Список админов
-ADMIN_IDS = [808947863]
 
 
 @router.message(F.text == "/admin")
@@ -208,16 +206,39 @@ async def show_products_list(callback: CallbackQuery):
         return
 
     text = "📦 <b>Список товаров:</b>\n\n"
-    for product in products:
-        text += f"🆔 {product.id} - {product.name}\n"
-        text += f"💰 {product.price}₽\n"
-        text += f"📂 {product.category.name if product.category else 'Без категории'}\n"
-        text += "─" * 20 + "\n"
+    # for product in products:
+    #     text += f"🆔 {product.id} - {product.name}\n"
+    #     text += f"💰 {product.price}₽\n"
+    #     text += f"📂 {product.category.name if product.category else 'Без категории'}\n"
+    #     text += "─" * 20 + "\n"
 
-    await callback.message.edit_text(text, reply_markup=get_products_list_kb(products), parse_mode="HTML")
-
+    #await callback.message.edit_text(text, reply_markup=get_products_list_kb(products), parse_mode="HTML")
+    await callback.message.answer(text, reply_markup=get_products_list_kb(products), parse_mode="HTML")
 
 # =========== Блок редактирования товаров =============
+async def show_product_card(message, product, reply_markup=None):
+    text = f"📦 <b>Редактирование товара:</b>\n\n"
+    text += f"🆔 ID: {product.id}\n"
+    text += f"🏷 Название: {product.name}\n"
+    text += f"📝 Описание: {product.description or '—'}\n"
+    text += f"💰 Цена: {product.price}₽\n"
+    text += f"📂 Категория: {product.category.name if product.category else '—'}\n"
+
+    # Если есть фото — отправляем фото с подписью
+    if product.photo_url:
+        await message.answer_photo(
+            photo=product.photo_url,
+            caption=text,
+            reply_markup=reply_markup,
+            parse_mode="HTML"
+        )
+    else:
+        # Если нет фото — отправляем обычный текст
+        await message.answer(
+            text,
+            reply_markup=reply_markup,
+            parse_mode="HTML"
+        )
 
 @router.callback_query(F.data.startswith("edit_product_"))
 async def edit_product(callback: CallbackQuery):
@@ -234,37 +255,49 @@ async def edit_product(callback: CallbackQuery):
     if not product:
         await callback.answer("❌ Товар не найден.")
         return
+    await show_product_card(callback.message, product, get_product_edit_kb(product_id))
 
-    text = f"📦 <b>Редактирование товара:</b>\n\n"
-    text += f"🆔 ID: {product.id}\n"
-    text += f"🏷 Название: {product.name}\n"
-    text += f"📝 Описание: {product.description or '—'}\n"
-    text += f"💰 Цена: {product.price}₽\n"
-    text += f"📂 Категория: {product.category.name if product.category else '—'}\n"
 
-    # ВСЕГДА используем edit_media, чтобы избежать ошибок
-    try:
-        if callback.message.photo:
-            await callback.message.edit_media(
-                media=InputMediaPhoto(
-                    media="https://i.ibb.co/0fYwQ5v/empty-cart.png",
-                    caption=text
-                ),
-                reply_markup=get_product_edit_kb(product_id)
-            )
-        else:
-            await callback.message.edit_text(
-                text,
-                reply_markup=get_product_edit_kb(product_id),
-                parse_mode="HTML"
-            )
-    except:
-        # Если не можем редактировать — отправляем новое сообщение
-        await callback.message.answer(
-            text,
-            reply_markup=get_product_edit_kb(product_id),
-            parse_mode="HTML"
-        )
+
+# =========== изменение наименования==============
+@router.callback_query(F.data.startswith("edit_name_"))
+async def start_edit_description(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("❌ Доступ запрещён.")
+        return
+
+    product_id = int(callback.data.split("_")[2])
+    await state.update_data(editing_product_id=product_id)
+    await callback.answer("✏️ Введите новое наименование в следующем сообщении:")
+    await state.set_state(EditProduct.name)
+
+
+@router.message(EditProduct.name)
+async def process_edit_name(message: Message, state: FSMContext):
+    data = await state.get_data()
+    product_id = data['editing_product_id']
+
+    db_gen = get_db()
+    db = next(db_gen)
+    product = db.query(Product).filter(Product.id == product_id).first()
+
+    if product:
+        product.name = message.text
+        db.commit()
+
+        # Показываем alert
+        await message.answer("✅ Описание обновлено!")
+
+    await state.clear()
+
+    # Возвращаемся к редактированию товара
+    fake_callback = type('Callback', (), {
+        'from_user': message.from_user,
+        'message': message,
+        'data': f'edit_product_{product_id}'
+    })
+    await edit_product(fake_callback)
+
 
 # =========== изменение описания =============
 
@@ -276,11 +309,7 @@ async def start_edit_description(callback: CallbackQuery, state: FSMContext):
 
     product_id = int(callback.data.split("_")[2])
     await state.update_data(editing_product_id=product_id)
-
-    # Показываем alert
     await callback.answer("✏️ Введите новое описание в следующем сообщении:")
-
-    # Не отправляем сообщений — просто ждём ответ
     await state.set_state(EditProduct.description)
 
 
@@ -321,7 +350,7 @@ async def start_edit_price(callback: CallbackQuery, state: FSMContext):
 
     product_id = int(callback.data.split("_")[2])
     await state.update_data(editing_product_id=product_id)
-    await callback.message.edit_text("💰 Введите новую цену товара:")
+    await callback.answer("💰 Введите новую цену товара:")
     await state.set_state(EditProduct.price)
 
 
@@ -362,7 +391,7 @@ async def start_edit_photo(callback: CallbackQuery, state: FSMContext):
 
     product_id = int(callback.data.split("_")[2])
     await state.update_data(editing_product_id=product_id)
-    await callback.message.edit_text("🖼 Отправьте новое фото товара:")
+    await callback.message.answer("🖼 Отправьте новое фото товара:")
     await state.set_state(EditProduct.photo)
 
 
@@ -382,13 +411,12 @@ async def process_edit_photo(message: Message, state: FSMContext):
         db.commit()
         await message.answer("✅ Фото обновлено!")
 
+        await show_product_card(message, product, get_product_edit_kb(product_id))
+    else:
+        await message.answer("❌ Товар не найден.")
+
     await state.clear()
-    fake_callback = type('Callback', (), {
-        'from_user': message.from_user,
-        'message': message,
-        'data': f'edit_product_{product_id}'
-    })
-    await edit_product(fake_callback)
+
 
 # =========== изменение категории =============
 
@@ -416,8 +444,11 @@ async def start_edit_category(callback: CallbackQuery, state: FSMContext):
     for cat in categories:
         buttons.append([InlineKeyboardButton(text=cat.name, callback_data=f"newcat_{product_id}_{cat.id}")])
 
-    await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
-
+    #await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await callback.message.answer(
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
 
 @router.callback_query(F.data.startswith("newcat_"))
 async def process_edit_category(callback: CallbackQuery):
@@ -447,7 +478,6 @@ async def process_edit_category(callback: CallbackQuery):
     await edit_product(fake_callback)
 
 # =========== удаление товара =============
-
 @router.callback_query(F.data.startswith("delete_product_"))
 async def delete_product(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
@@ -466,11 +496,27 @@ async def delete_product(callback: CallbackQuery):
         await callback.answer("✅ Товар удалён!")
     else:
         await callback.answer("❌ Товар не найден.")
+        return
 
-    # Возвращаемся к списку товаров
-    fake_callback = type('Callback', (), {
-        'from_user': callback.from_user,
-        'message': callback.message,
-        'data': "admin_products"
-    })
-    await show_products_list(fake_callback)
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
+
+    db_gen = get_db()
+    db = next(db_gen)
+    products = db.query(Product).all()
+
+    if not products:
+        await callback.message.answer("📭 Нет товаров.", reply_markup=get_admin_menu_kb())
+        return
+
+    text = "📦 <b>Список товаров:</b>\n\n"
+    # for product in products:
+    #     text += f"🆔 {product.id} - {product.name}\n"
+    #     text += f"💰 {product.price}₽\n"
+    #     text += f"📂 {product.category.name if product.category else 'Без категории'}\n"
+    #     text += "─" * 20 + "\n"
+
+    await callback.message.answer(text, reply_markup=get_products_list_kb(products), parse_mode="HTML")

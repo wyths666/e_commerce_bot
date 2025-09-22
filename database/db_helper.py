@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .models import Base
+from config import DATABASE_URL
 import os
 
-# Используем SQLite — файл bot.db в корне
-DATABASE_URL = "sqlite:///./bot.db"
+
 
 # Создаём движок
 engine = create_engine(
