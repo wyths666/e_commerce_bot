@@ -59,7 +59,7 @@ def get_cart_kb(items):
         total += item.quantity * item.product.price
 
     buttons.append([InlineKeyboardButton(text=f"💳 Итого: {total:.0f}₽",callback_data="ignore")])
-    buttons.append([InlineKeyboardButton(text="📦 Оформить заказ", callback_data="start_order")])
+    buttons.append([InlineKeyboardButton(text="📦 Оформить заказ", callback_data="start_new_order")])
     buttons.append([InlineKeyboardButton(text="⬅️ В каталог", callback_data="open_catalog")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -82,6 +82,12 @@ def get_delivery_kb():
         [InlineKeyboardButton(text="📍 Самовывоз", callback_data="delivery_pickup")],
         [InlineKeyboardButton(text="📍 СДЭК", callback_data="delivery_sdek")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_cart")]
+    ])
+
+def get_confirm_address_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Использовать этот адрес", callback_data="use_address")],
+        [InlineKeyboardButton(text="✏️ Изменить адрес", callback_data="change_address")]
     ])
 
 def get_confirm_kb():

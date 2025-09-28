@@ -5,10 +5,11 @@ from aiogram.types import ReplyKeyboardRemove
 import re
 from states.user_states import UserProfile
 from database import models
-from database.crud import get_user_profile, get_orders_by_user
+from database.crud import get_user_profile, get_orders_by_user, user_cancel_order
 from database.db_helper import get_db
 
-from keyboards.lk_keyboards import get_profile_edit_kb, return_profile_edit_kb, share_contact, get_user_orders_kb
+from keyboards.lk_keyboards import get_profile_edit_kb, return_profile_edit_kb, share_contact, get_user_orders_kb, \
+    order_details_kb, kb_with_cancel
 
 router = Router()
 
@@ -237,6 +238,8 @@ async def show_user_orders(callback: CallbackQuery):
     await callback.message.edit_text(text, reply_markup=get_user_orders_kb(orders, user_id), parse_mode="HTML")
 
 
+
+
 @router.callback_query(F.data.startswith("user_order_"))
 async def show_user_order_details(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[-1])
@@ -245,7 +248,6 @@ async def show_user_order_details(callback: CallbackQuery):
     db = next(db_gen)
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     user_id = order.user_id
-    orders = get_orders_by_user(db, user_id)
 
     if not order:
         await callback.answer("❌ Заказ не найден.")
@@ -259,6 +261,64 @@ async def show_user_order_details(callback: CallbackQuery):
     text += f"🚚 Доставка: {order.delivery_method}\n"
     text += f"📊 Статус: {order.status}\n"
     text += f"📅 Дата: {order.created_at.strftime('%d.%m.%Y %H:%M')}\n"
-    text += f"📦 Товары в заказе: {order.items}"
+    # Показываем товары
+    if order.items:
+        text += f"📦 Товары в заказе:\n"
+        for item in order.items:
+            # Показываем название товара и количество
+            text += f"• {item.product.name} - {item.quantity}x{item.price} = {item.quantity * item.price}\n"
+    else:
+        text += f"📦 Товары в заказе: не указаны\n"
 
-    await callback.message.edit_text(text, reply_markup=  , parse_mode="HTML")
+    if order.status == "new":
+        await callback.message.edit_text(text, reply_markup=kb_with_cancel(order_id, user_id), parse_mode="HTML")
+    else:
+        await callback.message.edit_text(text, reply_markup=order_details_kb(order_id, user_id), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("cancelling_"))
+async def cancelling_order(callback: CallbackQuery):
+    data = callback.data.split("_")
+    order_id = int(data[-1])
+
+    db_gen = get_db()
+    db = next(db_gen)
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+
+    if not order:
+        await callback.answer("❌ Заказ не найден.")
+        return
+
+    status = order.status
+    user_id = order.user_id
+    updated_order = user_cancel_order(db, order_id, status)
+
+    if updated_order:
+        await callback.answer(f"✅ Заказ отменен")
+
+        try:
+            await callback.message.delete()
+        except:
+            pass  # Игнорируем ошибку, если сообщение уже удалено
+
+        # ✅ ОТПРАВЛЯЕМ НОВОЕ СООБЩЕНИЕ
+        text = f"📄 <b>Заказ № {updated_order.order_number}</b>\n\n"
+        text += f"👤 ФИО: {updated_order.customer_name}\n"
+        text += f"📱 Телефон: {updated_order.customer_phone}\n"
+        text += f"📍 Адрес доставки: {updated_order.customer_address}\n"
+        text += f"💰 Сумма заказ: {updated_order.total_amount}₽\n"
+        text += f"🚚 Доставка: {updated_order.delivery_method}\n"
+        text += f"📊 Статус: {updated_order.status}\n"
+        text += f"📅 Дата: {updated_order.created_at.strftime('%d.%m.%Y %H:%M')}\n"
+
+        # Показываем товары
+        if updated_order.items:
+            text += f"📦 Товары в заказе:\n"
+            for item in updated_order.items:
+                text += f"• {item.product.name} - {item.quantity}x{item.price} = {item.quantity * item.price}\n"
+        else:
+            text += f"📦 Товары в заказе: не указаны\n"
+
+        await callback.message.answer(text, reply_markup=order_details_kb(order_id, user_id), parse_mode="HTML")
+    else:
+        await callback.answer("❌ Ошибка при изменении статуса")

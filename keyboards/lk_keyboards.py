@@ -39,3 +39,20 @@ def get_user_orders_kb(orders, user_id):
         ])
     buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data=f"user_profile")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def order_details_kb(order_id, user_id):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="↪️ Повторить заказ", callback_data=f"user_order_reply_{order_id}")],
+        [InlineKeyboardButton(text="↩️ Вернуться к списку заказов", callback_data=f"orders_{user_id}")],
+        [InlineKeyboardButton(text="⬅️ Вернуться в профиль", callback_data=f"user_profile")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data=f"back_to_menu")]
+    ])
+
+def kb_with_cancel(order_id, user_id):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Отменить заказ", callback_data=f"cancelling_{order_id}")],
+        [InlineKeyboardButton(text="↩️ Вернуться к списку заказов", callback_data=f"orders_{user_id}")],
+        [InlineKeyboardButton(text="⬅️ Вернуться в профиль", callback_data=f"user_profile")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data=f"back_to_menu")]
+    ])
+

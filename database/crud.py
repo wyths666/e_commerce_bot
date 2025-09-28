@@ -61,17 +61,9 @@ def clear_cart(db: Session, user_id: int):
     db.commit()
 
 # === Заказы ===
-def create_order(
-    db: Session,
-    user_id: int,
-    total_amount: float,
-    customer_name: str,
-    customer_phone: str,
-    customer_address: str,
-    delivery_method: str,
-    cart_items: list  # Список CartItem
-):
-    # Генерируем номер заказа
+def create_order(db: Session, user_id: int, total_amount: float, customer_name: str,
+                 customer_phone: str, customer_address: str, delivery_method: str, items_data: list):
+    # Генерируем уникальный номер заказа
     order_number = f"ORD-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
 
     # Создаём заказ
@@ -85,23 +77,18 @@ def create_order(
         order_number=order_number
     )
     db.add(order)
-    db.flush()  # Чтобы получить ID заказа
+    db.commit()
+    db.refresh(order)
 
-    # Создаём OrderItem для каждого товара
-    for cart_item in cart_items:
+    # ✅ Создаём связи между заказом и товарами
+    for item_data in items_data:
         order_item = OrderItem(
             order_id=order.id,
-            product_id=cart_item.product_id,
-            quantity=cart_item.quantity,
-            price_at_time=cart_item.product.price
+            product_id=item_data['product_id'],
+            quantity=item_data['quantity'],
+            price=item_data['price']
         )
         db.add(order_item)
-
-        # Уменьшаем остатки
-        cart_item.product.stock_quantity -= cart_item.quantity
-
-    # Очищаем корзину
-    clear_cart(db, user_id)
 
     db.commit()
     return order
@@ -143,3 +130,17 @@ def get_order_with_items(db: Session, order_id: int):
             ]
         }
     return None
+
+def user_cancel_order(db: Session, order_id: int, status: str):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        return None
+
+    if status == "new":
+        order.status = "cancelled"
+        db.commit()
+        db.refresh(order)  # ✅ Обновляем объект
+        return order
+    else:
+        return None
+
