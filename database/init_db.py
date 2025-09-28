@@ -1,6 +1,6 @@
 # Запуск командой python -m database.init_db
 from .db_helper import init_db, engine
-from .models import Base, Category, Product
+from .models import Base, Category, Product, Profile
 from sqlalchemy.orm import sessionmaker
 
 def add_demo_data():

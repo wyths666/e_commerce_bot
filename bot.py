@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from database.db_helper import init_db
-from handlers import user_handlers, admin_handlers, order_handlers, purchase_handlers
+from handlers import user_handlers, admin_handlers, order_handlers, purchase_handlers, lk_handlers
 from config import BOT_TOKEN
 
 # Настройка логирования
@@ -30,10 +30,13 @@ dp.include_router(user_handlers.router)
 dp.include_router(order_handlers.router)
 dp.include_router(admin_handlers.router)
 dp.include_router(purchase_handlers.router)
+dp.include_router(lk_handlers.router)
+
 
 async def main():
     # Инициализируем БД
     init_db()
+    print(("Bot runnig"))
     # Пропускаем накопившиеся апдейты
     await bot.delete_webhook(drop_pending_updates=True)
     # Запускаем polling

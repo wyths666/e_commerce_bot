@@ -12,6 +12,14 @@ class Category(Base):
 
     products = relationship("Product", back_populates="category")
 
+class Profile(Base):
+    __tablename__ = 'users_profile'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, unique=True, nullable=False)  # Telegram user ID (уникальный)
+    user_name = Column(String(100))
+    user_phone = Column(String(20))
+    user_address = Column(String(300))
+
 class Product(Base):
     __tablename__ = 'products'
     id = Column(Integer, primary_key=True, index=True)
@@ -23,6 +31,7 @@ class Product(Base):
 
     category = relationship("Category", back_populates="products")
     cart_items = relationship("CartItem", back_populates="product")
+    order_items = relationship("OrderItem", back_populates="product")
 
 class CartItem(Base):
     __tablename__ = 'cart_items'
@@ -45,3 +54,15 @@ class Order(Base):
     customer_address = Column(String(300))
     delivery_method = Column(String(50))
     order_number = Column(String(20), unique=True, nullable=False)
+    items = relationship("OrderItem", back_populates="order")
+
+class OrderItem(Base):
+    __tablename__ = 'order_items'
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    price_at_time = Column(Float, nullable=False)  # Цена товара на момент заказа
+
+    order = relationship("Order", back_populates="items")
+    product = relationship("Product")

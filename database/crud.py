@@ -3,6 +3,9 @@ from . import models
 import uuid
 from datetime import datetime
 
+from .models import OrderItem, Order
+
+
 # === Категории ===
 def get_categories(db: Session):
     return db.query(models.Category).all()
@@ -58,11 +61,21 @@ def clear_cart(db: Session, user_id: int):
     db.commit()
 
 # === Заказы ===
-def create_order(db: Session, user_id: int, total_amount: float, customer_name: str,
-                 customer_phone: str, customer_address: str, delivery_method: str):
-    # Генерируем уникальный номер заказа
+def create_order(
+    db: Session,
+    user_id: int,
+    total_amount: float,
+    customer_name: str,
+    customer_phone: str,
+    customer_address: str,
+    delivery_method: str,
+    cart_items: list  # Список CartItem
+):
+    # Генерируем номер заказа
     order_number = f"ORD-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
-    order = models.Order(
+
+    # Создаём заказ
+    order = Order(
         user_id=user_id,
         total_amount=total_amount,
         customer_name=customer_name,
@@ -72,10 +85,25 @@ def create_order(db: Session, user_id: int, total_amount: float, customer_name: 
         order_number=order_number
     )
     db.add(order)
-    db.commit()
-    db.refresh(order)
+    db.flush()  # Чтобы получить ID заказа
+
+    # Создаём OrderItem для каждого товара
+    for cart_item in cart_items:
+        order_item = OrderItem(
+            order_id=order.id,
+            product_id=cart_item.product_id,
+            quantity=cart_item.quantity,
+            price_at_time=cart_item.product.price
+        )
+        db.add(order_item)
+
+        # Уменьшаем остатки
+        cart_item.product.stock_quantity -= cart_item.quantity
+
+    # Очищаем корзину
     clear_cart(db, user_id)
 
+    db.commit()
     return order
 
 def get_orders_by_user(db: Session, user_id: int):
@@ -90,4 +118,28 @@ def update_order_status(db: Session, order_id: int, status: str):
         order.status = status
         db.commit()
         return order
+    return None
+
+def get_user_profile(db: Session, user_id: int):
+    return db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
+
+
+def get_order_with_items(db: Session, order_id: int):
+    order = db.query(Order).filter(Order.id == order_id).first()
+
+    if order:
+        # Получаем товары в заказе
+        items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+        return {
+            "order": order,
+            "items": [
+                {
+                    "product_name": item.product.name,
+                    "quantity": item.quantity,
+                    "price": item.price_at_time,
+                    "total": item.quantity * item.price_at_time
+                }
+                for item in items
+            ]
+        }
     return None
