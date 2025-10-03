@@ -57,7 +57,7 @@ async def show_order_details(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("❌ Доступ запрещён.")
         return
-
+    statuses = {"new": "В обработке", "confirmed": "Подтвержден", "delivered": "Отправлен", "cancelled": "Отменен"}
     order_id = int(callback.data.split("_")[-1])
 
     db_gen = get_db()
@@ -74,7 +74,7 @@ async def show_order_details(callback: CallbackQuery):
     text += f"📍 Адрес: {order.customer_address}\n"
     text += f"💰 Сумма: {order.total_amount}₽\n"
     text += f"🚚 Доставка: {order.delivery_method}\n"
-    text += f"📊 Статус: {order.status}\n"
+    text += f"📊 Статус: {statuses[order.status]}\n"
     text += f"📅 Дата: {order.created_at.strftime('%d.%m.%Y %H:%M')}\n"
 
     await callback.message.edit_text(text, reply_markup=get_order_status_kb(order_id, order.status), parse_mode="HTML")

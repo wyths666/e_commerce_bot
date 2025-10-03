@@ -3,8 +3,9 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 def get_main_menu_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🛍 Каталог", callback_data="open_catalog")],
-        [InlineKeyboardButton(text="Личный кабинет", callback_data="user_profile")],
-        [InlineKeyboardButton(text="🛒 Корзина", callback_data="open_cart")]
+        [InlineKeyboardButton(text="👤 Личный кабинет", callback_data="user_profile")],
+        [InlineKeyboardButton(text="🛒 Корзина", callback_data="open_cart")],
+        [InlineKeyboardButton(text="🏢 О магазине", callback_data="open_cart")]
     ])
 
 def get_categories_kb(categories):
@@ -66,21 +67,20 @@ def get_cart_kb(items):
 
 def get_back_to_menu_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⬅️ Назад в каталог", callback_data="open_catalog")]
+        [InlineKeyboardButton(text="⬅️ Назад в каталог", callback_data="open_catalog")],
+        [InlineKeyboardButton(text="🏠 На главную", callback_data="back_to_menu")]
     ])
 
 def get_product_view_kb(product_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="⬅️ Назад к корзине", callback_data="back_to_cart")
-        ]
+        [InlineKeyboardButton(text="⬅️ Назад к корзине", callback_data="back_to_cart")]
     ])
 
 def get_delivery_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📦 Курьером", callback_data="delivery_courier")],
-        [InlineKeyboardButton(text="📍 Самовывоз", callback_data="delivery_pickup")],
-        [InlineKeyboardButton(text="📍 СДЭК", callback_data="delivery_sdek")],
+        [InlineKeyboardButton(text="🏢 Самовывоз", callback_data="delivery_pickup")],
+        [InlineKeyboardButton(text="🚚 Транспортной компанией", callback_data="delivery_sdek")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_cart")]
     ])
 

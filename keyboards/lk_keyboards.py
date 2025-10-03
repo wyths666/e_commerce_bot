@@ -6,6 +6,7 @@ def get_profile_edit_kb(user_id):
         [InlineKeyboardButton(text="👤 Редактировать ФИО", callback_data=f"edit_username_{user_id}")],
         [InlineKeyboardButton(text="🏠 Редактировать Адрес доставки", callback_data=f"edit_user_address_{user_id}")],
         [InlineKeyboardButton(text="📱 Редактировать Телефон", callback_data=f"edit_user_phone_{user_id}")],
+        [InlineKeyboardButton(text="🛒 Корзина", callback_data="open_cart_from_product")],
         [InlineKeyboardButton(text="📦 Мои заказы", callback_data=f"orders_{user_id}")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu")]
     ])

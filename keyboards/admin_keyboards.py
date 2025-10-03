@@ -24,14 +24,13 @@ def get_orders_kb(orders):
 
 
 def get_order_status_kb(order_id, current_status):
-    statuses = ["new", "confirmed", "delivered", "cancelled"]
+    statuses = {"new": "В обработке", "confirmed": "Подтвержден", "delivered": "Отправлен", "cancelled": "Отменен"}
     buttons = []
     for status in statuses:
         if status == current_status:
-            text = f"✅ {status.capitalize()}"
+            text = f"✅ {statuses[status]}"
         else:
-            text = status.capitalize()
-        # callback_data всегда одинаковый — status_123_new
+            text = statuses[status]
         callback_data = f"status_{status}_{order_id}"
         buttons.append([InlineKeyboardButton(text=text, callback_data=callback_data)])
 

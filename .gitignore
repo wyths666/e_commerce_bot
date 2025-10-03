@@ -13,3 +13,17 @@ __pycache__/
 .pytest_cache/
 env/
 venv/
+/.idea
+/.venv
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache/
+env/
+venv/

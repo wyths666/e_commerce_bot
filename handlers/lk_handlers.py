@@ -38,6 +38,7 @@ def normalize_phone(phone: str) -> str | None:
 
 
 async def show_profile_card(message, user_id=None):
+
     if user_id is None:
         user_id = message.from_user.id
 
@@ -248,6 +249,7 @@ async def show_user_order_details(callback: CallbackQuery):
     db = next(db_gen)
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     user_id = order.user_id
+    statuses = {"new": "В обработке", "confirmed": "Подтвержден", "delivered": "Отправлен", "cancelled": "Отменен"}
 
     if not order:
         await callback.answer("❌ Заказ не найден.")
@@ -259,7 +261,7 @@ async def show_user_order_details(callback: CallbackQuery):
     text += f"📍 Адрес доставки: {order.customer_address}\n"
     text += f"💰 Сумма: {order.total_amount}₽\n"
     text += f"🚚 Доставка: {order.delivery_method}\n"
-    text += f"📊 Статус: {order.status}\n"
+    text += f"📊 Статус: {statuses[order.status]}\n"
     text += f"📅 Дата: {order.created_at.strftime('%d.%m.%Y %H:%M')}\n"
     # Показываем товары
     if order.items:
