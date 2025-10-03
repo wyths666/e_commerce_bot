@@ -55,4 +55,14 @@ def kb_with_cancel(order_id, user_id):
         [InlineKeyboardButton(text="⬅️ Вернуться в профиль", callback_data=f"user_profile")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data=f"back_to_menu")]
     ])
+def get_confirm_data_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить данные", callback_data="confirm_data")],
+        [InlineKeyboardButton(text="✏️ Изменить данные", callback_data="edit_data")]
+    ])
 
+def get_confirm_order_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Оформить заказ", callback_data="confirm_new_order")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="back_to_menu")]
+    ])

@@ -4,6 +4,8 @@ class NewOrderForm(StatesGroup):
     delivery = State()
     address = State()
     confirm = State()
+    confirm_order = State()
+    confirm_address = State()
 
 
 class OrderForm(StatesGroup):
