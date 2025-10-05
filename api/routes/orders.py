@@ -22,7 +22,6 @@ def get_orders(
     return orders[skip:skip + limit]
 
 
-
 templates = Jinja2Templates(directory="templates")
 
 @router.get("/orders-page/", response_class=HTMLResponse, name="orders_page")

@@ -1,13 +1,13 @@
 import logging
 from fastapi import APIRouter
-from sqlalchemy.orm import Session
+from fastapi.templating import Jinja2Templates
 from api.models.user import SendMessageResponse, SendToUserRequest
 from aiogram import Bot
 from fastapi import Depends
-from database.crud import broadcast_message_sync
-from database.db_helper import get_db
+
 
 router = APIRouter(tags=["User"], prefix="/user")
+templates = Jinja2Templates(directory="templates")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,19 +22,6 @@ logger = logging.getLogger(__name__)
 async def get_bot() -> Bot:
     from bot import bot
     return bot
-
-
-@router.post("/broadcast")
-def broadcast_message(
-    text: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Массовая рассылка сообщений всем пользователям
-    """
-    return broadcast_message_sync(db, text)
-
-
 
 
 @router.post("/send-to-user", response_model=SendMessageResponse)
