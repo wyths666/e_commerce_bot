@@ -1,11 +1,20 @@
+import asyncio
+import logging
 from sqlalchemy.orm import Session
 from . import models
 import uuid
 from datetime import datetime
-
 from .models import OrderItem, Order
 
-
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("logs/bot.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 # === Категории ===
 def get_categories(db: Session):
     return db.query(models.Category).all()
@@ -166,3 +175,83 @@ def format_orders_with_product_names(db: Session, orders):
             product = get_product_by_id(db, item.product_id)
             item.product_name = product.name if product else "Неизвестный товар"
     return orders
+
+# ======================= Рассылка
+
+def get_user_ids_sync(db: Session) -> list[int]:
+    """
+    Получить список всех user_id из таблицы Profile (синхронная версия)
+    """
+    try:
+        user_ids = db.query(models.Profile.user_id) \
+            .filter(models.Profile.user_id.isnot(None)) \
+            .all()
+
+        user_ids = [user_id[0] for user_id in user_ids]
+        return list(set(user_ids))
+
+    except Exception as e:
+        logger.error(f"Ошибка при получении user_ids: {e}")
+        return []
+
+
+def broadcast_message_sync(db: Session, text: str):
+    """
+    Синхронная рассылка с правильным управлением сессиями
+    """
+    try:
+        user_ids = get_user_ids_sync(db)
+
+        if not user_ids:
+            return {"success": False, "message": "Нет пользователей для рассылки"}
+
+        logger.info(f"Найдено пользователей для рассылки: {len(user_ids)}")
+
+        # Асинхронная функция отправки
+        async def send_all_messages():
+            from bot import bot
+            success_count = 0
+            failed_users = []
+
+            try:
+                for user_id in user_ids:
+                    try:
+                        await bot.send_message(chat_id=user_id, text=text)
+                        logger.info(f"Сообщение отправлено пользователю {user_id}")
+                        success_count += 1
+                        await asyncio.sleep(0.1)  # Задержка
+                    except Exception as e:
+                        logger.error(f"Ошибка отправки пользователю {user_id}: {e}")
+                        failed_users.append(user_id)
+
+                return success_count, failed_users
+
+            finally:
+                # Важно: закрываем сессию бота
+                await bot.session.close()
+
+        # Запускаем асинхронную рассылку
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            success_count, failed_users = loop.run_until_complete(send_all_messages())
+        finally:
+            loop.close()
+
+        # Формируем результат
+        result = {
+            "success": True,
+            "message": f"Сообщение отправлено {success_count} из {len(user_ids)} пользователей",
+            "users_count": len(user_ids),
+            "success_count": success_count
+        }
+
+        if failed_users:
+            result["failed_users"] = failed_users
+            result["failed_count"] = len(failed_users)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Ошибка при запуске рассылки: {e}")
+        return {"success": False, "message": "Ошибка сервера"}
