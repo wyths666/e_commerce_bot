@@ -144,3 +144,25 @@ def user_cancel_order(db: Session, order_id: int, status: str):
     else:
         return None
 
+def update_product(db: Session, product_id: int, **kwargs):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if product:
+        for key, value in kwargs.items():
+            if value is not None:
+                setattr(product, key, value)
+        db.commit()
+        return product
+    return None
+
+def get_all_users(db: Session):
+    return db.query(models.Profile).all()
+
+def get_order_with_details(db: Session, order_id: int):
+    return db.query(models.Order).filter(models.Order.id == order_id).first()
+
+def format_orders_with_product_names(db: Session, orders):
+    for order in orders:
+        for item in order.items:
+            product = get_product_by_id(db, item.product_id)
+            item.product_name = product.name if product else "Неизвестный товар"
+    return orders
